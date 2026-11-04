@@ -1,0 +1,13 @@
+/build/
+/dist/
+/keys/
+__pycache__/
+*.pyc
+*.key
+*.pem
+*.blob
+*.ta
+*.elf
+*.o
+*.d
+*.log

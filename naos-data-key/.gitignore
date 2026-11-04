@@ -1,0 +1,12 @@
+/build/
+/out/
+/naos-data-key
+*.o
+*.a
+*.so
+*.so.*
+*.record
+*.blob
+*.img
+*.key
+*.pem

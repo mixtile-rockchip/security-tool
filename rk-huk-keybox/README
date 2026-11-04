@@ -1,0 +1,75 @@
+rk-huk-keybox
+=============
+
+独立的 Rockchip CA/TA 工具，使用 rk_derive_ta_unique_key 派生本芯片、
+本 TA 的封装密钥，再以 AES-256-GCM 封装已有的 32 字节密钥。
+不生成替代的数据密钥，不向 RPMB 或 GP 持久化对象保存密钥；只有 nonce 随机。
+TA 使用固定 UUID 6bada6f2-74f7-49cc-8d0f-4195a3c62fb0，
+不需要在密钥目录中额外提供 ta.uuid 文件。
+
+外部构建
+--------
+
+需要 Python 3、GNU make、主机 GCC、ARM64 目标 GCC/sysroot，
+sysroot 中应包含 libteec 头文件和库。外部 rk_tee_user 源码应提供
+v2/export-ta_arm64 和 v2/ta/rk_public_api/rk_derive_key_api.{c,h}。
+已验证 SDK 源码版本：957bd3aa88589a2c78bc12867ef082675f464e19。
+Python 签名依赖：pycryptodomex、pyelftools。
+
+    python3 build.py \
+      --sdk-source "$RK_TEE_SOURCE" \
+      --cc "$AARCH64_CC" \
+      --sysroot "$AARCH64_SYSROOT"
+
+RK_TEE_SOURCE、AARCH64_CC、AARCH64_SYSROOT 分别填写外部源码目录、
+目标 gcc 可执行文件和目标 sysroot。脚本独立运行，不依赖 Yocto 或
+此工具以外的项目目录，也不会读取 system.key 或修改外部 SDK。
+
+默认 UUID 已固定；--uuid 可显式覆盖，但更改 UUID 后旧 blob 不可用。
+默认输出 build/，可用 --output 指定其他空目录。
+Python 模块装在独立目录时，可用 --python-deps 指定。
+
+TA 默认沿用 SDK devkit 的签名选择：先 rk_privkey.pem，缺少时使用
+oem_privkey.pem。BL32 必须信任对应 TA 签名根。生产签名可指定：
+
+    python3 build.py --sdk-source "$RK_TEE_SOURCE" \
+      --cc "$AARCH64_CC" --sysroot "$AARCH64_SYSROOT" \
+      --ta-sign-key "$TA_SIGNING_PEM"
+
+私钥保留在工程之外；build/ 是本地构建产物，不应提交到 Git。
+
+安装与使用
+----------
+
+将匹配目标 libc 的 libteec、tee-supplicant 安装到设备，并确保
+OP-TEE 的 /dev/tee0、/dev/teepriv0 可用。TA 安装目录须与 supplicant
+的加载路径一致，通常为 /lib/optee_armtz：
+
+    sudo install -m 0755 build/keybox_app /usr/bin/keybox_app
+    keybox_uuid=$(cat build/ta.uuid)
+    sudo install -d /lib/optee_armtz
+    sudo install -m 0644 "build/$keybox_uuid.ta" /lib/optee_armtz/
+
+启动 tee-supplicant 后执行：
+
+    umask 077
+    keybox_app seal system.key system.blob
+    keybox_app unseal system.blob restored.key
+    cmp system.key restored.key
+
+system.key 必须恰好为 64 个小写十六进制字符，无换行。
+输入必须是私有权限的普通文件，不能是符号链接；输出路径必须不存在。
+system.blob 是 100 字节二进制封装，restored.key 是还原后的同一密钥，
+64 个小写十六进制字符、无换行、私有权限。命令不会打印密钥。
+GCM 认证失败时返回非零状态，不生成输出文件。
+
+misc 中的系统密钥记录读、写和擦除由现有 naos-data-key 的 system 子命令负责。
+此 CA 只提供 seal/unseal，不操作 misc 设备。
+
+    naos-data-key system read DEVICE import|blob-a|blob-b OUTPUT_RECORD
+    naos-data-key system write DEVICE blob-a|blob-b INPUT_RECORD EXPECTED_RECORD
+    naos-data-key system erase DEVICE import EXPECTED_RECORD
+
+这些接口使用完整 64 KiB 原始记录快照，固定 import、blob-a、blob-b 窗口分别位于
+misc 的 0x20000、0x50000、0x60000。写入和擦除前须与 EXPECTED_RECORD 匹配，
+完成后同步并回读确认；其它 misc 区域不在操作范围内。

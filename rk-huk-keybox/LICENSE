@@ -1,0 +1,8 @@
+This project retains the license declarations of the Rockchip KeyBox example.
+
+ca/main.c: GPL-2.0-only (LICENSES/GPL-2.0-only.txt)
+ta/keybox.c, ta/include/user_ta_header_defines.h,
+include/ta_keybox.h.in, build.py, ta/Makefile, ta/sub.mk: BSD-2-Clause (LICENSES/BSD-2-Clause.txt)
+
+The Rockchip TA devkit and rk_derive_key_api are external build dependencies.
+They are not bundled in this source tree; their original licenses apply.

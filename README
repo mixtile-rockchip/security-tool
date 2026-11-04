@@ -1,0 +1,14 @@
+NAOS security tools
+===================
+
+naos-data-key/
+  管理 misc 中的 userdata 密钥 blob、system 密钥导入记录和 system blob。
+  保留原 userdata 命令，system 记录通过 system read/write/erase 操作。
+
+rk-huk-keybox/
+  Rockchip HUK 封装工具及其 TA，只提供已有系统密钥的 seal/unseal。
+  封装后的 blob 交给 naos-data-key 存入 misc。
+
+两个目录均提供独立构建入口，源码分别维护在对应工具目录。
+Yocto recipe 从这里明确列取源码并完成交叉编译、安装；不复制整个工具目录。
+编译说明、依赖和命令见各目录 README。构建产物和私钥不提交到 Git。
