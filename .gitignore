@@ -1,0 +1,14 @@
+**/build/
+**/__pycache__/
+**/keys/
+*.py[cod]
+*.o
+*.a
+*.so
+*.so.*
+*.ta
+*.elf
+*.blob
+*.record
+*.key
+*.pem
